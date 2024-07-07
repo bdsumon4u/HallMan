@@ -14,4 +14,9 @@ class Hall extends Model
     {
         return $this->hasMany(Student::class);
     }
+
+    public function logs(): HasMany
+    {
+        return $this->hasMany(Log::class);
+    }
 }
