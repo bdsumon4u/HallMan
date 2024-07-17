@@ -34,6 +34,9 @@ class Scrambler
     private static $tReservedVariableNames = [
         'this', 'GLOBALS', '_SERVER', '_GET', '_POST', '_FILES', '_COOKIE', '_SESSION', '_ENV', '_REQUEST',
         'php_errormsg', 'HTTP_RAW_POST_DATA', 'http_response_header', 'argc', 'argv',
+
+        // Filament specific
+        'get', 'set', 'state', 'value', 'record',
     ];
 
     private static $tReservedFunctionNames = [
@@ -45,6 +48,9 @@ class Scrambler
         'namespace', 'new', 'null', 'or', 'print', 'private', 'protected', 'public', 'require', 'require_once',
         'return', 'static', 'string', 'switch', 'throw', 'trait', 'true', 'try', 'unset', 'use', 'var', 'while', 'xor', 'yield',
         'apache_request_headers',                        // seems that it is not included in get_defined_functions ..
+
+        // Laravel specific
+        'info', 'dd', 'dump',
     ];
 
     private static $tReservedClassNames = [
@@ -57,14 +63,14 @@ class Scrambler
     public static function make($type): static
     {
         return match (true) {
-            $type == 'constant' => (new static())
+            $type == 'constant' => (new static($type))
                 ->caseSensitive()
                 ->ignore(static::$tReservedFunctionNames)
                 ->ignore(array_keys(get_defined_constants(false)))
                 ->ignore(Hotash::get('t_ignore_constants', []))
                 ->ignorePrefix(Hotash::get('t_ignore_constant_prefixes', [])),
 
-            $type == 'konstant' => (new static())
+            $type == 'konstant' => (new static($type))
                 ->caseSensitive()
                 ->ignore(static::$tReservedFunctionNames)
                 ->ignore(array_keys(get_defined_constants(false)))
@@ -79,13 +85,13 @@ class Scrambler
                 ->ignore(Hotash::get('t_ignore_konstants', []))
                 ->ignorePrefix(Hotash::get('t_ignore_konstant_prefixes', [])),
 
-            $type == 'variable' => (new static())
+            $type == 'variable' => (new static($type))
                 ->caseSensitive()
                 ->ignore(static::$tReservedVariableNames)
                 ->ignore(Hotash::get('t_ignore_variables', []))
                 ->ignorePrefix(Hotash::get('t_ignore_variable_prefixes', [])),
 
-            in_array($type, ['function', 'class', 'interface', 'trait', 'namespace']) => (new static())
+            in_array($type, ['function', 'class', 'interface', 'trait', 'namespace']) => (new static('class'))
                 ->caseSensitive()
                 ->ignore(static::$tReservedFunctionNames)
                 ->ignore(get_defined_functions()['internal'])
@@ -104,7 +110,7 @@ class Scrambler
                 ->ignorePrefix(Hotash::get('t_ignore_trait_prefixes', []))
                 ->ignorePrefix(Hotash::get('t_ignore_namespace_prefixes', [])),
 
-            $type == 'property' => (new static())
+            $type == 'property' => (new static($type))
                 ->caseSensitive()
                 ->ignore(static::$tReservedVariableNames)
                 ->ignore(Hotash::get('t_pre_defined_properties'), Hotash::get('t_ignore_pre_defined_classes', 'none') == 'all')
@@ -118,7 +124,7 @@ class Scrambler
                 ->ignore(Hotash::get('t_ignore_properties', []))
                 ->ignorePrefix(Hotash::get('t_ignore_property_prefixes', [])),
 
-            $type == 'method' => (new static())
+            $type == 'method' => (new static($type))
                 ->caseSensitive()
                 ->ignore(Hotash::get('parser_mode') == 'ONLY_PHP7' ? [] : static::$tReservedFunctionNames)
                 ->ignore(static::$tReservedMethodNames)
@@ -134,7 +140,7 @@ class Scrambler
                 ->ignore(Hotash::get('t_ignore_methods', []))
                 ->ignorePrefix(Hotash::get('t_ignore_method_prefixes', [])),
 
-            $type == 'label' => (new static())
+            $type == 'label' => (new static($type))
                 ->caseSensitive()
                 ->ignore(static::$tReservedFunctionNames)
                 ->ignore(Hotash::get('t_ignore_labels', []))
@@ -143,7 +149,7 @@ class Scrambler
         };
     }
 
-    public function __construct()
+    public function __construct(private string $type)
     {
         $this->r = md5(microtime(true));     // random seed
 
@@ -226,7 +232,6 @@ class Scrambler
 
     public function scramble(string $s)
     {
-        dump('scrambling: '.$s);
         $r = $s;
         // $r = $this->caseSensitive ? $s : strtolower($s);
         if (in_array($r, $this->tIgnore)) {
@@ -239,6 +244,7 @@ class Scrambler
             }
         }
 
+        dump('scrambling: '.$this->type.': '.$s);
         if (isset($this->tScramble[$r])) {
             return $this->tScramble[$r];
         }

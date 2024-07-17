@@ -117,11 +117,15 @@ class ObfuscationVisitor extends NodeVisitorAbstract
                 }
             }
 
-            if (($node instanceof Node\Stmt\Catch_) || ($node instanceof Node\ClosureUse) || ($node instanceof Node\Param)) {
-                if ($node->var instanceof Node\Expr\Variable) {
-                    $node->var->name = $scrambler->scramble($node->var->name);
-                }
-            }
+            // if (($node instanceof Node\Stmt\Catch_) || ($node instanceof Node\ClosureUse) || ($node instanceof Node\Param)) {
+            //     if ($node->var instanceof Node\Expr\Variable) {
+            //         if (is_string($node->var->name)) {
+            //             $node->var->name = $scrambler->scramble($node->var->name);
+            //         } else {
+            //             dump('variable name is not a string');
+            //         }
+            //     }
+            // }
         }
 
         // Obfuscate Function Names
@@ -163,7 +167,7 @@ class ObfuscationVisitor extends NodeVisitorAbstract
                     $node->name->getAttributes(),
                 );
                 if ($node->extends) {
-                    $node->extends = new Node\Name\FullyQualified(
+                    $node->extends = new Node\Name(
                         $scrambler->scramble($node->extends),
                         $node->extends->getAttributes(),
                     );
@@ -288,15 +292,13 @@ class ObfuscationVisitor extends NodeVisitorAbstract
         if (Hotash::get('t_obfuscate_property_name')) {
             $scrambler = Hotash::scrambler('property');
             if (($node instanceof Node\Expr\PropertyFetch) || ($node instanceof Node\PropertyItem) || ($node instanceof Node\Expr\StaticPropertyFetch)) {
-                if ($node->name instanceof Node\Identifier) {
-                    $node->name = new Node\Identifier(
+                if ($node->name instanceof Node\VarLikeIdentifier) {
+                    $node->name = new Node\VarLikeIdentifier(
                         $scrambler->scramble($node->name),
                         $node->name->getAttributes(),
                     );
-                }
-
-                if ($node->name instanceof Node\VarLikeIdentifier) {
-                    $node->name = new Node\VarLikeIdentifier(
+                } elseif ($node->name instanceof Node\Identifier) {
+                    $node->name = new Node\Identifier(
                         $scrambler->scramble($node->name),
                         $node->name->getAttributes(),
                     );
@@ -361,12 +363,13 @@ class ObfuscationVisitor extends NodeVisitorAbstract
                         $node->name->getAttributes(),
                     );
                 }
-                // if ($node->name instanceof Node\Expr\Variable) {
-                //     $node->name = new Node\Expr\Variable(
-                //         $scrambler->scramble($node->name),
-                //         $node->name->getAttributes(),
-                //     );
-                // }
+                if ($node->name instanceof Node\Expr\Variable) {
+                    if (is_string($node->name)) {
+                        $node->name = $scrambler->scramble($node->name);
+                    } else {
+                        dump('variable name is not a string');
+                    }
+                }
             }
             if (($node instanceof Node\Expr\New_)
                 || ($node instanceof Node\Expr\Instanceof_)
@@ -393,10 +396,11 @@ class ObfuscationVisitor extends NodeVisitorAbstract
                     );
                 }
                 if ($node->class instanceof Node\Expr\Variable) {
-                    $node->class = new Node\Expr\Variable(
-                        $scrambler->scramble($node->class),
-                        $node->class->getAttributes(),
-                    );
+                    if (is_string($node->class->name)) {
+                        $node->class->name = $scrambler->scramble($node->class->name);
+                    } else {
+                        dump('variable name is not a string');
+                    }
                 }
             }
             if ($node instanceof Node\Stmt\Class_) {
@@ -433,10 +437,11 @@ class ObfuscationVisitor extends NodeVisitorAbstract
                     );
                 }
                 if ($node->type instanceof Node\Expr\Variable) {
-                    $node->type = new Node\Expr\Variable(
-                        $scrambler->scramble($node->type),
-                        $node->type->getAttributes(),
-                    );
+                    if (is_string($node->type->name)) {
+                        $node->type->name = $scrambler->scramble($node->type->name);
+                    } else {
+                        dump('variable name is not a string');
+                    }
                 }
             }
             if ($node instanceof Node\Stmt\Interface_) {
@@ -664,7 +669,7 @@ class ObfuscationVisitor extends NodeVisitorAbstract
                 || ($node instanceof Node\Stmt\TryCatch)
                 || ($node instanceof Node\Stmt\Catch_)
                 || ($node instanceof Node\Stmt\Case_)
-                || ($node instanceof Node\Stmt\Namespace_)
+                // || ($node instanceof Node\Stmt\Namespace_)
             ) {
                 $this->shuffle_stmts($node);
             }
@@ -691,10 +696,10 @@ class ObfuscationVisitor extends NodeVisitorAbstract
     {
         if (Hotash::get('t_shuffle_statements')) {
             if ($stmts = $node->stmts) {
-                $chunk_size = $this->shuffle_get_chunk_size($stmts);
+                $chunk_size = Hotash::shuffle_get_chunk_size($stmts);
 
                 if (count($stmts) > $chunk_size + Hotash::get('t_shuffle_statements_min_chunk_size')) {
-                    $node->stmts = $this->shuffle_statements($stmts);
+                    $node->stmts = Hotash::shuffle_statements($stmts);
 
                     return true;
                 }
@@ -702,56 +707,5 @@ class ObfuscationVisitor extends NodeVisitorAbstract
         }
 
         return false;
-    }
-
-    private function shuffle_get_chunk_size(&$stmts)
-    {
-        $chunk_size = Hotash::get('t_shuffle_statements_min_chunk_size');
-        if (Hotash::get('t_shuffle_statements_chunk_mode') === 'ratio') {
-            $chunk_size = max($chunk_size, count($stmts) / Hotash::get('t_shuffle_statements_chunk_ratio'));
-        }
-
-        return round($chunk_size);
-    }
-
-    private function shuffle_statements($stmts)
-    {
-        $chunk_size = $this->shuffle_get_chunk_size($stmts);
-
-        $scrambler = Hotash::scrambler('label');
-        $label_name_prev = $scrambler->generateLabelName();
-        $first_goto = new Node\Stmt\Goto_($label_name_prev);
-        $t = [];
-        $t_chunk = [];
-        for ($i = 0; $i < count($stmts); $i++) {
-            $t_chunk[] = $stmts[$i];
-            if (count($t_chunk) >= $chunk_size) {
-                $label = [new Node\Stmt\Label($label_name_prev)];
-                $label_name = $scrambler->generateLabelName();
-                $goto = [new Node\Stmt\Goto_($label_name)];
-                $t[] = array_merge($label, $t_chunk, $goto);
-                $label_name_prev = $label_name;
-                $t_chunk = [];
-            }
-        }
-        if (count($t_chunk) > 0) {
-            $label = [new Node\Stmt\Label($label_name_prev)];
-            $label_name = $scrambler->generateLabelName();
-            $goto = [new Node\Stmt\Goto_($label_name)];
-            $t[] = array_merge($label, $t_chunk, $goto);
-            $label_name_prev = $label_name;
-            $t_chunk = [];
-        }
-
-        shuffle($t);
-        $stmts = [$first_goto];
-        foreach ($t as $stmt) {
-            foreach ($stmt as $inst) {
-                $stmts[] = $inst;
-            }
-        }
-        $stmts[] = new Node\Stmt\Label($label_name);
-
-        return $stmts;
     }
 }

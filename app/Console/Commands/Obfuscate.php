@@ -13,7 +13,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
 
-class ObfuscateCommand extends Command
+class Obfuscate extends Command
 {
     use HasConfig, HasFile, HasParser;
 

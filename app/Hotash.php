@@ -3,6 +3,7 @@
 namespace App;
 
 use Illuminate\Support\Collection;
+use PhpParser\Node;
 use ReflectionClass;
 
 class Hotash extends Collection
@@ -62,10 +63,63 @@ class Hotash extends Collection
 
     public function scrambler(string $type): Scrambler
     {
+        $t = in_array($type, ['function', 'class', 'interface', 'trait', 'namespace']) ? 'class' : $type;
+
         if (! isset($this->scramblers[$type])) {
-            $this->scramblers[$type] = Scrambler::make($type);
+            $this->scramblers[$t] = Scrambler::make($type);
         }
 
-        return $this->scramblers[$type];
+        return $this->scramblers[$t];
+    }
+
+    public function shuffle_statements($stmts)
+    {
+        $chunk_size = $this->shuffle_get_chunk_size($stmts);
+
+        $scrambler = $this->scrambler('label');
+        $label_name_prev = $scrambler->generateLabelName();
+        $first_goto = new Node\Stmt\Goto_($label_name_prev);
+        $t = [];
+        $t_chunk = [];
+        for ($i = 0; $i < count($stmts); $i++) {
+            $t_chunk[] = $stmts[$i];
+            if (count($t_chunk) >= $chunk_size) {
+                $label = [new Node\Stmt\Label($label_name_prev)];
+                $label_name = $scrambler->generateLabelName();
+                $goto = [new Node\Stmt\Goto_($label_name)];
+                $t[] = array_merge($label, $t_chunk, $goto);
+                $label_name_prev = $label_name;
+                $t_chunk = [];
+            }
+        }
+        if (count($t_chunk) > 0) {
+            $label = [new Node\Stmt\Label($label_name_prev)];
+            $label_name = $scrambler->generateLabelName();
+            $goto = [new Node\Stmt\Goto_($label_name)];
+            $t[] = array_merge($label, $t_chunk, $goto);
+            $label_name_prev = $label_name;
+            $t_chunk = [];
+        }
+
+        shuffle($t);
+        $stmts = [$first_goto];
+        foreach ($t as $stmt) {
+            foreach ($stmt as $inst) {
+                $stmts[] = $inst;
+            }
+        }
+        $stmts[] = new Node\Stmt\Label($label_name);
+
+        return $stmts;
+    }
+
+    public function shuffle_get_chunk_size(&$stmts)
+    {
+        $chunk_size = $this->get('t_shuffle_statements_min_chunk_size');
+        if ($this->get('t_shuffle_statements_chunk_mode') === 'ratio') {
+            $chunk_size = max($chunk_size, count($stmts) / $this->get('t_shuffle_statements_chunk_ratio'));
+        }
+
+        return round($chunk_size);
     }
 }
