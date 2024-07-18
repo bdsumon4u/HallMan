@@ -9,10 +9,10 @@ trait HasConfig
     private function processArguments(): void
     {
         $this->askToIgnoreConstant();
+        $this->askToIgnoreKonstant();
         $this->askToIgnoreVariable();
         $this->askToIgnoreFunction();
         $this->askToIgnoreClass();
-        $this->askToIgnoreKonstant();
         $this->askToIgnoreInterface();
         $this->askToIgnoreTrait();
         $this->askToIgnoreProperty();
@@ -29,6 +29,17 @@ trait HasConfig
 
         if (($value = $this->ask('Enter the constant prefixes to ignore', $default = 'none')) !== $default) {
             Hotash::put('t_ignore_constant_prefixes', array_map('trim', explode(',', $value)));
+        }
+    }
+
+    private function askToIgnoreKonstant(): void
+    {
+        if (($value = $this->ask('Enter the konstants to ignore', $default = 'none')) !== $default) {
+            Hotash::put('t_ignore_konstants', array_map('trim', explode(',', $value)));
+        }
+
+        if (($value = $this->ask('Enter the konstant prefixes to ignore', $default = 'none')) !== $default) {
+            Hotash::put('t_ignore_konstant_prefixes', array_map('trim', explode(',', $value)));
         }
     }
 
@@ -62,17 +73,6 @@ trait HasConfig
 
         if (($value = $this->ask('Enter the class prefixes to ignore', $default = 'none')) !== $default) {
             Hotash::put('t_ignore_class_prefixes', array_map('trim', explode(',', $value)));
-        }
-    }
-
-    private function askToIgnoreKonstant(): void
-    {
-        if (($value = $this->ask('Enter the konstants to ignore', $default = 'none')) !== $default) {
-            Hotash::put('t_ignore_konstants', array_map('trim', explode(',', $value)));
-        }
-
-        if (($value = $this->ask('Enter the konstant prefixes to ignore', $default = 'none')) !== $default) {
-            Hotash::put('t_ignore_konstant_prefixes', array_map('trim', explode(',', $value)));
         }
     }
 
@@ -152,10 +152,10 @@ trait HasConfig
         Hotash::put('t_obfuscate_loop_statement', ! $this->option('no-obfuscate-loop-statement'));
         Hotash::put('t_obfuscate_if_statement', ! $this->option('no-obfuscate-if-statement'));
         Hotash::put('t_obfuscate_constant_name', ! $this->option('no-obfuscate-constant-name'));
+        Hotash::put('t_obfuscate_konstant_name', ! $this->option('no-obfuscate-konstant-name'));
         Hotash::put('t_obfuscate_variable_name', ! $this->option('no-obfuscate-variable-name'));
         Hotash::put('t_obfuscate_function_name', ! $this->option('no-obfuscate-function-name'));
         // Hotash::put('t_obfuscate_class_name', ! $this->option('no-obfuscate-class-name'));
-        Hotash::put('t_obfuscate_konstant_name', ! $this->option('no-obfuscate-konstant-name'));
         // Hotash::put('t_obfuscate_interface_name', ! $this->option('no-obfuscate-interface-name'));
         // Hotash::put('t_obfuscate_trait_name', ! $this->option('no-obfuscate-trait-name'));
         // Hotash::put('t_obfuscate_property_name', ! $this->option('no-obfuscate-property-name'));
