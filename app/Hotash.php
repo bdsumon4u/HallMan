@@ -77,7 +77,8 @@ class Hotash extends Collection
         $chunk_size = $this->shuffle_get_chunk_size($stmts);
 
         $scrambler = $this->scrambler('label');
-        $label_name_prev = $scrambler->generateLabelName();
+        $label_name = $scrambler->generateLabelName();
+        $label_name_prev = $label_name;
         $first_goto = new Node\Stmt\Goto_($label_name_prev);
         $t = [];
         $t_chunk = [];
@@ -101,14 +102,16 @@ class Hotash extends Collection
             $t_chunk = [];
         }
 
-        shuffle($t);
-        $stmts = [$first_goto];
-        foreach ($t as $stmt) {
-            foreach ($stmt as $inst) {
-                $stmts[] = $inst;
+        if (count($t)) {
+            shuffle($t);
+            $stmts = [$first_goto];
+            foreach ($t as $stmt) {
+                foreach ($stmt as $inst) {
+                    $stmts[] = $inst;
+                }
             }
+            $stmts[] = new Node\Stmt\Label($label_name);
         }
-        $stmts[] = new Node\Stmt\Label($label_name);
 
         return $stmts;
     }
