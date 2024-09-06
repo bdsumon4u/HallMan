@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\StudentRequest;
+use App\Http\Resources\StudentResource;
 use App\Models\Student;
 
 class StudentController extends Controller
@@ -33,7 +34,9 @@ class StudentController extends Controller
             ->when($request->filled('hall_id'), function ($query) use ($request) {
                 $query->where('hall_id', $request->hall);
             });
+
+        $students = $request->filled('per_page') ? $query->paginate($request->per_page) : $query->get();
         
-        return $request->filled('per_page') ? $query->paginate($request->per_page) : $query->get();
+        return StudentResource::collection($students);
     }
 }
