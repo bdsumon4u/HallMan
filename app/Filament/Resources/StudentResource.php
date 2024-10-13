@@ -4,14 +4,18 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\StudentResource\Pages;
 use App\Filament\Resources\StudentResource\RelationManagers;
+use App\Models\Hall;
 use App\Models\Student;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class StudentResource extends Resource
 {
@@ -66,8 +70,32 @@ class StudentResource extends Resource
                 Forms\Components\TextInput::make('room_no')
                     ->placeholder('Enter the student room number')
                     ->label('Room No')
+                    ->integer()
                     ->required()
-                    ->hidden(fn ($get) => !$get('hall_id')),
+                    ->hidden(fn ($get) => !$get('hall_id'))
+                    ->rules([
+                        fn ($get, $record) => function ($attribute, $value, $fail) use ($get, $record) {
+                            $room = DB::table('rooms')
+                                ->where('hall_id', $get('hall_id'))
+                                ->where('number', $value)
+                                ->first();
+
+                            if (! Hall::findOrFail($get('hall_id'))->rooms()->where('number', $value)->exists()) {
+                                return $fail('The selected room does not exist.');
+                            }
+
+                            $students = Hall::findOrFail($get('hall_id'))
+                                ->students()
+                                ->where('room_no', $value)
+                                ->where('id', '!=', $record?->id)
+                                ->where('session', now()->subYears(5)->year)
+                                ->count();
+
+                            if ($room->capacity <= $students) {
+                                return $fail('The selected room is full.');
+                            }
+                        },
+                    ]),
                 Forms\Components\TextInput::make('department')
                     ->placeholder('Enter the student department')
                     ->label('Department')
@@ -76,7 +104,16 @@ class StudentResource extends Resource
                 Forms\Components\TextInput::make('session')
                     ->placeholder('Enter the student session')
                     ->label('Session')
-                    ->required(),
+                    ->required()
+                    ->integer()
+                    ->rule('regex:/^\d{4}$/')
+                    ->rule(fn ($operation) => function ($attribute, $value, $fail) use ($operation) {
+                        if ($operation == 'edit') return;
+
+                        if (now()->year < $value || now()->year - 5 > $value) {
+                            return $fail('The session year must be in the past 4 years.');
+                        }
+                    }),
                 Forms\Components\TextInput::make('year')
                     ->placeholder('Enter the student year')
                     ->label('Year')
@@ -96,6 +133,9 @@ class StudentResource extends Resource
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('hall.name')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('email')
@@ -137,18 +177,23 @@ class StudentResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                //
+                SelectFilter::make('hall_id')
+                    ->label('Hall')
+                    ->options(fn () => Hall::pluck('name', 'id')->toArray())
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->slideOver()
                     ->modalWidth('md'),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->persistFiltersInSession();
     }
 
     public static function getRelations(): array

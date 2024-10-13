@@ -19,4 +19,9 @@ class Hall extends Model
     {
         return $this->hasMany(Log::class);
     }
+
+    public function rooms(): HasMany
+    {
+        return $this->hasMany(Room::class);
+    }
 }

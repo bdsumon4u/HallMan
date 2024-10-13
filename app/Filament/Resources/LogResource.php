@@ -4,12 +4,14 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\LogResource\Pages;
 use App\Filament\Resources\LogResource\RelationManagers;
+use App\Models\Hall;
 use App\Models\Log;
 use App\Models\Student;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -78,6 +80,9 @@ class LogResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function (Builder $query) {
+                $query->with(['hall', 'student.hall']);
+            })
             ->defaultSort('id', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('hall.name')
@@ -85,10 +90,21 @@ class LogResource extends Resource
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('student.name')
+                    ->formatStateUsing(function ($state, $record) {
+                        if (! $record->student) {
+                            return $state;
+                        }
+
+                        return '<strong>'.$record->student?->name.'</strong> - ' . $record->student?->sid;
+                    })
+                    ->html()
                     ->default('Unknown')
                     ->label('Student')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->description(function ($record) {
+                        return $record->student?->hall?->name;
+                    }),
                 Tables\Columns\TextColumn::make('action')
                     ->label('Action')
                     ->searchable()
@@ -99,7 +115,10 @@ class LogResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                //
+                SelectFilter::make('hall_id')
+                    ->label('Hall')
+                    ->options(fn () => Hall::pluck('name', 'id')->toArray())
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
@@ -110,7 +129,8 @@ class LogResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->persistFiltersInSession();
     }
 
     public static function getRelations(): array
