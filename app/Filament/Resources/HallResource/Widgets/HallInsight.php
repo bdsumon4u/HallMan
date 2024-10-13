@@ -19,13 +19,6 @@ class HallInsight extends BaseWidget
         return HallResource::table($table)
             ->query(
                 Hall::query()
-                    ->withCount([
-                        'rooms' => fn ($query) => $query,
-                        'students' => function ($query) {
-                            $query->where('session', '>=', now()->subYears(5)->format('Y'));
-                        },
-                    ])
-                    ->withSum('rooms', 'capacity')
             )
             ->headerActions([
                 Tables\Actions\Action::make('Add Hall')

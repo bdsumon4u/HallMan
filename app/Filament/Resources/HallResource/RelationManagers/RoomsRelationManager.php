@@ -35,7 +35,7 @@ class RoomsRelationManager extends RelationManager
         return $table
             ->modifyQueryUsing(function ($query) {
                 $query->withCount(['students' => function (Builder $query) {
-                    $query->where('session', '>=', now()->subYears(5)->format('Y'));
+                    $query->where('session', '>=', now()->subYears(6)->format('Y') . '-' . now()->subYears(5)->format('y'));
                 }]);
             })
             ->recordTitleAttribute('number')

@@ -88,7 +88,7 @@ class StudentResource extends Resource
                                 ->students()
                                 ->where('room_no', $value)
                                 ->where('id', '!=', $record?->id)
-                                ->where('session', now()->subYears(5)->year)
+                                ->where('session', '>=', now()->subYears(6)->format('Y') . '-' . now()->subYears(5)->format('y'))
                                 ->count();
 
                             if ($room->capacity <= $students) {
@@ -105,13 +105,14 @@ class StudentResource extends Resource
                     ->placeholder('Enter the student session')
                     ->label('Session')
                     ->required()
-                    ->integer()
-                    ->rule('regex:/^\d{4}$/')
+                    ->rule('regex:/^\d{4}-\d{2}$/')
                     ->rule(fn ($operation) => function ($attribute, $value, $fail) use ($operation) {
                         if ($operation == 'edit') return;
 
-                        if (now()->year < $value || now()->year - 5 > $value) {
-                            return $fail('The session year must be in the past 4 years.');
+                        $minSession = now()->subYears(6)->format('Y') . '-' . now()->subYears(5)->format('y');
+                        $maxSession = now()->subYear()->format('Y') . ' - ' . now()->format('y');
+                        if ($value < $minSession || $value > $maxSession) {
+                            return $fail('The session year must be in the past 5 years.');
                         }
                     }),
                 Forms\Components\TextInput::make('year')

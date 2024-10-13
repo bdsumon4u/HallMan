@@ -45,7 +45,7 @@ class HallResource extends Resource
                 $query->withCount([
                     'rooms' => fn ($query) => $query,
                     'students' => function ($query) {
-                        $query->where('session', '>=', now()->subYears(5)->format('Y'));
+                        $query->where('session', '>=', now()->subYears(6)->format('Y') . '-' . now()->subYears(5)->format('y'));
                     },
                 ])
                 ->withSum('rooms', 'capacity');
