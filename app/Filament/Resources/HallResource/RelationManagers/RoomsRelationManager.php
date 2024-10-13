@@ -23,7 +23,7 @@ class RoomsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('number')
                     ->required()
                     ->integer()
-                    ->unique(modifyRuleUsing: fn ($rule) => $rule->where('hall_id', $this->ownerRecord->getKey())),
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('hall_id', $this->ownerRecord->getKey())),
                 Forms\Components\TextInput::make('capacity')
                     ->required()
                     ->integer(),
