@@ -85,10 +85,8 @@ class LogResource extends Resource
             })
             ->defaultSort('id', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('hall.name')
-                    ->label('Hall')
-                    ->searchable()
-                    ->sortable(),
+                Tables\Columns\ImageColumn::make('student.image')
+                    ->label('Photo'),
                 Tables\Columns\TextColumn::make('student.name')
                     ->formatStateUsing(function ($state, $record) {
                         if (! $record->student) {
@@ -105,6 +103,10 @@ class LogResource extends Resource
                     ->description(function ($record) {
                         return $record->student?->hall?->name;
                     }),
+                // Tables\Columns\TextColumn::make('hall.name')
+                //     ->label('Hall')
+                //     ->searchable()
+                //     ->sortable(),
                 Tables\Columns\TextColumn::make('action')
                     ->label('Action')
                     ->searchable()

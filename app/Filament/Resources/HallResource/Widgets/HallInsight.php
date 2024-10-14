@@ -21,7 +21,7 @@ class HallInsight extends BaseWidget
                 Hall::query()
             )
             ->headerActions([
-                Tables\Actions\Action::make('Add Hall')
+                Tables\Actions\CreateAction::make('Add Hall')
                     ->form(fn ($form) => HallResource::form($form))
                     ->slideOver()
                     ->modalWidth('md')
